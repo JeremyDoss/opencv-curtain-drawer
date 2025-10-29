@@ -42,7 +42,7 @@ def load_yolo():
     output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
     return net, output_layers
 
-def detect_people(frame, net, output_layers, curtain_points, last_time):
+def detect_people(frame, net, output_layers, curtain_points, last_time, maskOnly=False):
     current_time = time.time()
     dt = current_time - last_time
     dt = min(dt, 0.1)  # Clamp dt to prevent large jumps
@@ -145,19 +145,22 @@ def detect_people(frame, net, output_layers, curtain_points, last_time):
     for point in curtain_points:
         point.update(dt)
     
-    # Draw the curtain effect
     # First, draw the main line segments between points
     for i in range(len(curtain_points) - 1):
         pt1 = (int(curtain_points[i].x), int(curtain_points[i].y))
         pt2 = (int(curtain_points[i + 1].x), int(curtain_points[i + 1].y))
         cv2.line(frame, pt1, pt2, (255, 255, 255), 8)
     
-    # # Draw the vertical "hanging" lines
-    # for i in range(0, len(curtain_points), 5):
-    #     pt = (int(curtain_points[i].x), int(curtain_points[i].y))
-    #     cv2.line(frame, pt, (pt[0], pt[1] - 20), (255, 255, 255), 1)
+    # Create a mask for pure white pixels (255, 255, 255)
+    mask = cv2.inRange(frame, (255, 255, 255), (255, 255, 255))
     
-    return frame, current_time
+    if maskOnly:
+        # Create the final output frame (black background with only pure white pixels)
+        final_frame = np.zeros_like(frame)
+        final_frame[mask > 0] = (255, 255, 255)
+        return final_frame, current_time
+    else:
+        return frame, current_time
 
 def main():
     # Initialize webcam
@@ -182,6 +185,7 @@ def main():
     # Initialize curtain points
     spacing = int(width / 60)
     bottom_offset = 5
+    maskOnly = False  # Set to True to output only the mask of white pixels
     curtain_points = [CurtainPoint(x, height - bottom_offset) for x in range(0, width, spacing)]
     
     # Initialize time
@@ -197,7 +201,7 @@ def main():
                 break
                 
             # Detect and draw
-            frame, last_time = detect_people(frame, net, output_layers, curtain_points, last_time)
+            frame, last_time = detect_people(frame, net, output_layers, curtain_points, last_time, maskOnly)
             
             # Resize frame to desired dimensions
             # frame = cv2.resize(frame, (output_width, output_height))
