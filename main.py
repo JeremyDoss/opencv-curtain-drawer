@@ -166,20 +166,43 @@ def main():
     # Initialize webcam
     cap = cv2.VideoCapture(0)
     
-    # Set desired output dimensions
-    # output_width = 1920  # Adjust these values as needed
-    # output_height = 1080  # Adjust these values as needed
+    # Check if the camera was opened successfully
+    if not cap.isOpened():
+        print("Error: Could not open camera.")
+        print("Available cameras:")
+        # Try other camera indices
+        for i in range(4):
+            test_cap = cv2.VideoCapture(i)
+            if test_cap.isOpened():
+                print(f"Camera {i} is available")
+            test_cap.release()
+        return
     
-    # Set camera properties (may not work with all cameras)
-    # cap.set(cv2.CAP_PROP_FRAME_WIDTH, output_width)
-    # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, output_height)
+    # Get camera properties
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
     
-    # Get initial frame dimensions
-    _, frame = cap.read()
+    print(f"Camera initialized successfully:")
+    print(f"Resolution: {width}x{height}")
+    print(f"FPS: {fps}")
     
-    # Resize frame to desired dimensions
-    # frame = cv2.resize(frame, (output_width, output_height))
+    # Try to get the first frame with retry
+    max_retries = 5
+    frame = None
+    for attempt in range(max_retries):
+        ret, frame = cap.read()
+        if ret and frame is not None:
+            break
+        print(f"Attempt {attempt + 1}: Failed to read frame, retrying...")
+        time.sleep(1)
     
+    if frame is None:
+        print("Error: Could not read any frames from the camera")
+        cap.release()
+        return
+        
+    # Get frame dimensions
     height, width = frame.shape[:2]
     
     # Initialize curtain points
